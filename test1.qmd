@@ -25,7 +25,7 @@ data_cleaned <- read.csv("survey_d_chem.csv")
 data_cleaned$Value <- as.numeric(gsub("[^0-9.]", "", data_cleaned$Value))
 ```
 
-### Explanation: 
+### Explanation:
 
 Purpose: This section loads the necessary libraries and reads the dataset containing information about the chemicals used in agriculture.
 
@@ -33,13 +33,45 @@ Cleaning: It cleans the Value column by replacing non-numeric entries (e.g., "(D
 
 EDA Objective: The Value column represents the quantity of chemicals used, and cleaning this data is crucial for subsequent analyses to ensure calculations and visualizations are accurate.
 
-## 2. **Retrieving Hazard Data from PubChem (GHS Classification)**
+## 2. **Top 10 Chemicals by Total Usage**
+
+```{r}
+
+
+# 3. Top 10 Chemicals by Total Usage
+top_chemicals <- data_cleaned %>%
+  group_by(chem_name) %>%
+  summarise(total_usage = sum(Value, na.rm = TRUE)) %>%
+  arrange(desc(total_usage)) %>%
+  top_n(10, total_usage)
+
+ggplot(top_chemicals, aes(x = reorder(chem_name, total_usage), y = total_usage)) +
+  geom_bar(stat = "identity", fill = "purple") +
+  coord_flip() +
+  labs(title = "Top 10 Chemicals by Total Usage", x = "Chemical Name", y = "Total Usage (LB)") +
+  theme_minimal()
+
+```
+
+### Analysis:
+
+-   **Purpose**: To identify the most heavily used chemicals and their relative quantities.
+
+-   **Findings**: **Chloropicrin** is by far the most used chemical, followed by **dichloropropene** and **sulfur**. Chloropicrin is known for its use as a soil fumigant, which raises concerns about soil health and long-term contamination. Other notable chemicals, such as **sulfur** and **captan**, are widely used for fungal control.
+
+-   **Implications**: The heavy reliance on these top chemicals suggests their central role in modern agriculture. However, such large-scale use demands further investigation into their potential health effects on farmworkers and nearby communities. For example, chloropicrin is a strong irritant and has been associated with respiratory issues.
+
+## 3. **Retrieving Hazard Data from PubChem (GHS Classification)**
 
 ### Explanation:
 
 Purpose: This section of code uses PubChem’s API to retrieve hazard data for each chemical. It looks for hazard classifications according to the Globally Harmonized System (GHS).
 
 GHS_searcher: Searches for the GHS classification in the API response. hazards_retriever: Extracts the relevant hazard statements (e.g., H300: Fatal if swallowed) from the classification. EDA Objective: Hazard data allows us to analyze the potential dangers associated with each chemical. This information will be used later to simulate toxicity scores based on the hazard classifications.
+
+### Output Explanation for EDA Report:
+
+The output of the code is a list, `hazard_data`, which contains GHS hazard classifications for the top 5 most frequent chemicals. Each chemical name is associated with a list of hazard statements, such as "H300: Fatal if swallowed" or "H410: Very toxic to aquatic life". If the data cannot be retrieved for a chemical, the output is `NA`. This data will later be used to assess pollution risk by combining it with the chemical usage data.
 
 ```{r}
 # Define functions for hazard retrieval from PubChemR
@@ -73,30 +105,32 @@ hazards_retriever <- function(index, result_json_object) {
 # Example: Retrieve hazard data for chemicals
 chemical_vec <- unique(data_cleaned$chem_name)
 
+
+top_chem_names <- head(top_chemicals$chem_name, 5)  
+
 hazard_data <- list()
-for (chemical in chemical_vec[1:5]) {  # Limiting to 5 chemicals for demo
+
+for (chemical in top_chem_names) { 
   result_f <- tryCatch(
     get_pug_rest(identifier = chemical, namespace = "name", domain = "compound", operation = "classification", output = "JSON"),
-    error = function(e) return(NULL)  # Return NULL if there's an error
+    error = function(e) return(NULL)  
   )
   
   if (!is.null(result_f)) {
-    ghs_index <- GHS_searcher(result_f)
-    hazard_list <- hazards_retriever(ghs_index, result_f)
-    hazard_data[[chemical]] <- hazard_list
+    ghs_index <- GHS_searcher(result_f)  
+    hazard_list <- hazards_retriever(ghs_index, result_f)  
+    hazard_data[[chemical]] <- hazard_list  
   } else {
-    hazard_data[[chemical]] <- NA
+    hazard_data[[chemical]] <- NA  
   }
 }
 
-# Print hazards for the chemicals
+
 print(hazard_data)
-
-
 
 ```
 
-## 3. **Proportion of Chemical Types**
+## 4. **Proportion of Chemical Types**
 
 ```{r}
 # Continue with EDA and visualization...
@@ -119,7 +153,7 @@ ggplot(chemical_type_counts, aes(x = "", y = n, fill = type)) +
 
 -   **Implications**: The heavy use of insecticides might indicate a focus on protecting crops from insect-related damage, but it also raises concerns about the long-term ecological impact on pollinators and other non-target organisms.
 
-## 4. **Total Chemical Usage by Year**
+## 5. **Total Chemical Usage by Year**
 
 ```{r}
 # 2. Total Chemical Usage by Year
@@ -140,33 +174,6 @@ ggplot(usage_by_year, aes(x = factor(Year), y = total_usage)) +
 -   **Findings**: There is a clear increase in chemical usage from 2018 to 2023, with 2023 showing a significant spike. While 2019 and 2021 had comparable usage levels, the sharp rise in 2023 suggests a dramatic shift, potentially due to increased agricultural activities, changes in regulation, or pest outbreaks.
 
 -   **Implications**: The increasing trend in chemical usage raises concerns about sustainability. An important next step would be to investigate whether the increase is driven by larger farm areas, higher intensity of chemical applications, or both. Monitoring the ecological effects of this rise is essential.
-
-## 5. **Top 10 Chemicals by Total Usage**
-
-```{r}
-
-# 3. Top 10 Chemicals by Total Usage
-top_chemicals <- data_cleaned %>%
-  group_by(chem_name) %>%
-  summarise(total_usage = sum(Value, na.rm = TRUE)) %>%
-  arrange(desc(total_usage)) %>%
-  top_n(10, total_usage)
-
-ggplot(top_chemicals, aes(x = reorder(chem_name, total_usage), y = total_usage)) +
-  geom_bar(stat = "identity", fill = "purple") +
-  coord_flip() +
-  labs(title = "Top 10 Chemicals by Total Usage", x = "Chemical Name", y = "Total Usage (LB)") +
-  theme_minimal()
-
-```
-
-#### Analysis:
-
--   **Purpose**: To identify the most heavily used chemicals and their relative quantities.
-
--   **Findings**: **Chloropicrin** is by far the most used chemical, followed by **dichloropropene** and **sulfur**. Chloropicrin is known for its use as a soil fumigant, which raises concerns about soil health and long-term contamination. Other notable chemicals, such as **sulfur** and **captan**, are widely used for fungal control.
-
--   **Implications**: The heavy reliance on these top chemicals suggests their central role in modern agriculture. However, such large-scale use demands further investigation into their potential health effects on farmworkers and nearby communities. For example, chloropicrin is a strong irritant and has been associated with respiratory issues.
 
 ## 6. **Simulating Toxicity Scores Based on GHS Hazard Classes**
 
