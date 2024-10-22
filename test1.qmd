@@ -38,7 +38,7 @@ EDA Objective: The Value column represents the quantity of chemicals used, and c
 ```{r}
 
 
-# 3. Top 10 Chemicals by Total Usage
+
 top_chemicals <- data_cleaned %>%
   group_by(chem_name) %>%
   summarise(total_usage = sum(Value, na.rm = TRUE)) %>%
@@ -134,7 +134,7 @@ print(hazard_data)
 
 ```{r}
 # Continue with EDA and visualization...
-# 1. Proportion of Chemical Types
+
 chemical_type_counts <- data_cleaned %>%
   count(type)
 
@@ -156,7 +156,7 @@ ggplot(chemical_type_counts, aes(x = "", y = n, fill = type)) +
 ## 5. **Total Chemical Usage by Year**
 
 ```{r}
-# 2. Total Chemical Usage by Year
+
 usage_by_year <- data_cleaned %>%
   group_by(Year) %>%
   summarise(total_usage = sum(Value, na.rm = TRUE))
